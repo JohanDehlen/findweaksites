@@ -20,7 +20,13 @@ export default function SearchForm() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [opportunityFilter, setOpportunityFilter] = useState<string[]>(['high', 'medium', 'low', 'minimal']);
+  const [problemFilter, setProblemFilter] = useState<{ [key: string]: boolean }>({
+    'no-website': true,
+    'not-https': true,
+    'low-reviews': true,
+    'low-rating': true,
+    'no-phone': true,
+  });
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,21 +61,52 @@ export default function SearchForm() {
     return 'border-green-500';
   };
 
+  const getGoogleMapsUrl = (business: any) => {
+    const query = encodeURIComponent(`${business.name} ${business.address}`);
+    return `https://www.google.com/maps/search/${query}`;
+  };
+
+  const hasProblem = (business: any, problemType: string) => {
+    const problemText = business.problems?.join('|') || '';
+    switch (problemType) {
+      case 'no-website':
+        return problemText.includes('No website');
+      case 'not-https':
+        return problemText.includes('Not HTTPS');
+      case 'low-reviews':
+        return problemText.includes('Only') || problemText.includes('Low review count');
+      case 'low-rating':
+        return problemText.includes('Low rating') || problemText.includes('Below 4.0');
+      case 'no-phone':
+        return problemText.includes('No phone');
+      default:
+        return false;
+    }
+  };
+
   const filteredResults = results.filter((business: any) => {
-    if (business.score <= 30 && opportunityFilter.includes('high')) return true;
-    if (business.score > 30 && business.score <= 50 && opportunityFilter.includes('medium')) return true;
-    if (business.score > 50 && business.score <= 70 && opportunityFilter.includes('low')) return true;
-    if (business.score > 70 && opportunityFilter.includes('minimal')) return true;
-    return false;
+    for (const [problem, selected] of Object.entries(problemFilter)) {
+      if (selected === true) {
+        if (!hasProblem(business, problem)) return false;
+      }
+    }
+    return true;
   });
+
+  const setProblemValue = (problem: string, value: boolean) => {
+    setProblemFilter({
+      ...problemFilter,
+      [problem]: value,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-gray-900 mb-2">FindWeakSites</h1>
+          <h1 className="text-5xl font-bold text-gray-900 mb-2">FindWeakSites.com</h1>
           <p className="text-lg text-gray-700">
-            Find businesses with weak online presence. Easy sales for agencies.
+            Search any niche and location to uncover businesses with weak websites, poor SEO, and untapped growth opportunities.
           </p>
         </div>
 
@@ -77,13 +114,13 @@ export default function SearchForm() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                What niche? (e.g., Plumbers, Dentists, Solar installers)
+                What niche? (e.g., Plumbers, Dentists, Solar Installers, Thai Restaurants, etc.)
               </label>
               <input
                 type="text"
                 value={niche}
                 onChange={(e) => setNiche(e.target.value)}
-                placeholder="Plumbers"
+                placeholder=""
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
                 required
               />
@@ -91,22 +128,20 @@ export default function SearchForm() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                What location? (e.g., New York, Los Angeles)
+                What location? (e.g., New York, London, Toronto, Brisbane)
               </label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="New York"
+                placeholder=""
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Country
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Country</label>
               <select
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
@@ -119,12 +154,159 @@ export default function SearchForm() {
               </select>
             </div>
 
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Search for businesses:
+              </label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Which don't have a website</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('no-website', true)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['no-website'] === true
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('no-website', false)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['no-website'] === false
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Which don't have an HTTPS website</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('not-https', true)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['not-https'] === true
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('not-https', false)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['not-https'] === false
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Which have a low review count</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('low-reviews', true)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['low-reviews'] === true
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('low-reviews', false)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['low-reviews'] === false
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Which have a low rating</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('low-rating', true)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['low-rating'] === true
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('low-rating', false)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['low-rating'] === false
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Which don't have a phone number listed</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('no-phone', true)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['no-phone'] === true
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProblemValue('no-phone', false)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        problemFilter['no-phone'] === false
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 rounded-lg transition"
             >
-              {loading ? 'Searching...' : '🔍 Find Weak Sites'}
+              {loading ? 'Searching...' : 'Find Weak Sites'}
             </button>
           </div>
         </form>
@@ -137,90 +319,19 @@ export default function SearchForm() {
 
         {results.length > 0 && (
           <div>
-            <div className="mb-6 bg-white rounded-lg shadow p-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-3">Filter by Opportunity Level:</label>
-              <div className="flex flex-wrap gap-3">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={opportunityFilter.includes('high')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setOpportunityFilter([...opportunityFilter, 'high']);
-                      } else {
-                        setOpportunityFilter(opportunityFilter.filter(f => f !== 'high'));
-                      }
-                    }}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">🔴 High (0-30)</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={opportunityFilter.includes('medium')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setOpportunityFilter([...opportunityFilter, 'medium']);
-                      } else {
-                        setOpportunityFilter(opportunityFilter.filter(f => f !== 'medium'));
-                      }
-                    }}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">🟠 Medium (31-50)</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={opportunityFilter.includes('low')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setOpportunityFilter([...opportunityFilter, 'low']);
-                      } else {
-                        setOpportunityFilter(opportunityFilter.filter(f => f !== 'low'));
-                      }
-                    }}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">🟡 Low (51-70)</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={opportunityFilter.includes('minimal')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setOpportunityFilter([...opportunityFilter, 'minimal']);
-                      } else {
-                        setOpportunityFilter(opportunityFilter.filter(f => f !== 'minimal'));
-                      }
-                    }}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">🟢 Minimal (71+)</span>
-                </label>
-              </div>
-            </div>
-
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
               Found {filteredResults.length} of {results.length} businesses
             </h2>
             <div className="space-y-4">
               {filteredResults.map((business: any, idx: number) => (
-                <div
-                  key={idx}
-                  className={`bg-white rounded-lg shadow p-6 border-l-4 ${getBorderColor(business.score)}`}
-                >
+                <div key={idx} className={`bg-white rounded-lg shadow p-6 border-l-4 ${getBorderColor(business.score)}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900">{business.name}</h3>
                       <p className="text-sm text-gray-600">{business.address}</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-3xl font-bold text-red-600">
-                        {Math.round(business.score)}/100
-                      </div>
+                      <div className="text-3xl font-bold text-red-600">{Math.round(business.score)}/100</div>
                       <p className="text-xs text-gray-500">Website Strength</p>
                     </div>
                   </div>
@@ -228,21 +339,25 @@ export default function SearchForm() {
                   <div className="text-sm space-y-1 mb-4">
                     {business.website && (
                       <p>
-                        🌐{' '}
                         <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-blue-600">
                           {business.website}
                         </a>
                       </p>
                     )}
-                    {business.phone && <p>📞 {business.phone}</p>}
-                    <p>⭐ {business.rating || 'N/A'} | 📝 {business.reviewCount || 0} reviews</p>
+                    {business.phone && <p>{business.phone}</p>}
+                    <p>{business.rating || 'N/A'} rating | {business.reviewCount || 0} reviews</p>
+                    <p>
+                      <a href={getGoogleMapsUrl(business)} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                        View on Google Maps
+                      </a>
+                    </p>
                   </div>
 
                   <div className="mb-4">
                     <p className="font-semibold text-sm text-gray-700 mb-2">Top Issues:</p>
                     <ul className="text-sm text-gray-600 space-y-1">
                       {business.problems?.map((p: string, i: number) => (
-                        <li key={i}>• {p}</li>
+                        <li key={i}>{p}</li>
                       ))}
                     </ul>
                   </div>
